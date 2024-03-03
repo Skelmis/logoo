@@ -87,6 +87,7 @@ class PrimaryLogger(Logger):
         self.__task: asyncio.Task | None = None
 
     async def start_consumer(self):
+        """Start the log sending task."""
         if self.__task is None:
             self.__task = asyncio.create_task(self._consume())
 
