@@ -29,6 +29,39 @@ class PrimaryLogger(Logger):
         extra_metadata: dict[Any, Any] | None = None,
         global_metadata: dict[Any, Any] | None = None,
     ):
+        """Primary logging interface. Each project requires one of these.
+
+        Parameters
+        ----------
+        name: str
+            The name of the logger
+        base_url: str
+            Your base openobserve URL.
+
+            E.g. `base_url="https://logs.example.com"`
+        org: str
+            The org to make logs under
+        stream: str
+            The stream for these logs to be ingested under
+        username: str
+            The username to use for auth
+        password: str
+            The password to use for auth
+        logs_per_call: int
+            How many logs to send per request to your instance.
+            Useful to set, so you don't hit things like WAF request
+            limits in high throughput environments.
+
+            Defaults to `100`.
+        poll_time: datetime.timedelta | float
+            How often to send all logs to your instance.
+
+            Defaults to every `30` seconds.
+        extra_metadata: dict
+            Extra metadata to add to all logs made by this class
+        global_metadata: dict
+            Extra metadata to add to every log sent to your instance
+        """
         super().__init__(name, extra_metadata)
         self.__headers: dict[str, str] = {
             "Content-type": "application/json",
@@ -61,24 +94,30 @@ class PrimaryLogger(Logger):
         while True:
             await asyncio.sleep(self.poll_time)
 
-            data_stream = []
-            for _ in range(self.logs_per_call):
-                try:
-                    data_stream.append(data_queue.get_nowait())
-                except QueueEmpty:
-                    break
+            while data_queue.qsize() != 0:
+                data_stream = []
+                for _ in range(self.logs_per_call):
+                    try:
+                        data = data_queue.get_nowait()
+                        if self.global_metadata is not None:
+                            data = {**data, **self.global_metadata}
 
-            resp: httpx.Response = await self.__client.post(
-                self.__url,
-                data=orjson.dumps(data_stream),  # type: ignore
-            )
-            del data_stream
+                        data_stream.append(data)
+                        data_queue.task_done()
+                    except QueueEmpty:
+                        break
 
-            if resp.status_code != 200:
-                log.error(
-                    "Failed to send logs to host with status code %s",
-                    resp.status_code,
+                resp: httpx.Response = await self.__client.post(
+                    self.__url,
+                    data=orjson.dumps(data_stream),  # type: ignore
                 )
-                return
+                del data_stream
 
-            # TODO Read json reponse body and check successful vs failed
+                if resp.status_code != 200:
+                    log.error(
+                        "Failed to send logs to host with status code %s",
+                        resp.status_code,
+                    )
+                    return
+
+                # TODO Read json reponse body and check successful vs failed
