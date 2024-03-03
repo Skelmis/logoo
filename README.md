@@ -3,6 +3,8 @@
 
 *Pronounced log-ew*
 
+`pip install logoo`
+
 ### Examples
 
 Primary file. One instance of `PrimaryLogger` is required per program.
