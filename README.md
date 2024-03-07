@@ -42,6 +42,18 @@ logger = Logger(__name__)
 logger.info("This comes from another file.")
 ```
 
+Note that this supports argument interpolation and can be a fairly good drop in logging replacement:
+```python
+from logging import Logger as built_in_logger
+from logoo import Logger
+
+log = built_in_logger(__name__)
+logger = Logger(__name__)
+
+log.info("%s", "Test")
+logger.info("%s", "test")
+```
+
 Documentation is as follows and remarkably simple:
 ```text
 Parameters
