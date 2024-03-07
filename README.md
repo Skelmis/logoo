@@ -76,6 +76,9 @@ logs_per_call: int
     How many logs to send per request to your instance.
     Useful to set, so you don't hit things like WAF request
     limits in high throughput environments.
+    
+    Note logoo makes as many requests as required
+    to exhaust the queue every `poll_time`.
 
     Defaults to `100`.
 poll_time: datetime.timedelta | float

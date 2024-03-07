@@ -54,6 +54,9 @@ class PrimaryLogger(Logger):
             Useful to set, so you don't hit things like WAF request
             limits in high throughput environments.
 
+            Note logoo makes as many requests as required
+            to exhaust the queue every `poll_time`.
+
             Defaults to `100`.
         poll_time: datetime.timedelta | float
             How often to send all logs to your instance.
