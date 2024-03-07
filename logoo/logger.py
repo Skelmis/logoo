@@ -51,9 +51,11 @@ class Logger:
             "level": level,
             "message": message,
             "source": self.name,
-            "created_at.timezone": "UTC",
-            "created_at.timestamp": created_at.timestamp(),
-            "created_at.iso_format": created_at.isoformat(),
+            "_timestamp.timezone": "UTC",
+            # We do this to get microseconds included
+            # Open to a better way to do it please
+            "_timestamp": str(created_at.timestamp()).replace(".", ""),
+            "_timestamp.iso_format": created_at.isoformat(),
         }
         if self.extra_metadata is not None:
             log = {**log, **self.extra_metadata}
