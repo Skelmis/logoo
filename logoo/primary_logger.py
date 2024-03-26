@@ -113,6 +113,12 @@ class PrimaryLogger(Logger):
                     except QueueEmpty:
                         break
 
+                log.debug(
+                    "Attempting to send %s logs to %s instance",
+                    len(data_stream),
+                    self.__url,
+                )
+
                 resp: httpx.Response = await self.__client.post(
                     self.__url,
                     data=orjson.dumps(data_stream),  # type: ignore
@@ -126,4 +132,18 @@ class PrimaryLogger(Logger):
                     )
                     return
 
-                # TODO Read json reponse body and check successful vs failed
+                resp_body = resp.json()
+                if resp_body.get('code') == 200:
+                    for stream in resp_body.get("status", []):
+                        success = int(stream["successful"])
+                        failure = int(stream("failed"))
+                        log.debug(
+                            "Sent %s logs to stream %s. %s successful, %s failed",
+                            success + failure,
+                            stream["name"],
+                            success,
+                            failure,
+                        )
+
+                else:
+                    log.error("Something went wrong uploading logs: %s", resp_body)

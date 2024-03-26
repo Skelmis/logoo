@@ -38,7 +38,7 @@ class Logger:
         message: str,
         level: LevelT,
         *args,
-        extra_metadata: dict[Any, Any] | None = None
+        extra_metadata: dict[Any, Any] | None = None,
     ):
         # We always want to log as strings for readability in open observe
         level = logging.getLevelName(level) if isinstance(level, int) else level
