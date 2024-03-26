@@ -7,6 +7,7 @@ import logging
 from asyncio import QueueEmpty
 from typing import Any
 
+import commons
 import httpx
 import orjson
 
@@ -97,53 +98,61 @@ class PrimaryLogger(Logger):
             self.__task = asyncio.create_task(self._consume())
 
     async def _consume(self):
-        while True:
-            await asyncio.sleep(self.poll_time)
+        try:
+            while True:
+                await asyncio.sleep(self.poll_time)
 
-            while data_queue.qsize() != 0:
-                data_stream = []
-                for _ in range(self.logs_per_call):
-                    try:
-                        data = data_queue.get_nowait()
-                        if self.global_metadata is not None:
-                            data = {**data, **self.global_metadata}
+                while data_queue.qsize() != 0:
+                    data_stream = []
+                    for _ in range(self.logs_per_call):
+                        try:
+                            data = data_queue.get_nowait()
+                            if self.global_metadata is not None:
+                                data = {**data, **self.global_metadata}
 
-                        data_stream.append(data)
-                        data_queue.task_done()
-                    except QueueEmpty:
-                        break
+                            data_stream.append(data)
+                            data_queue.task_done()
+                        except QueueEmpty:
+                            break
 
-                log.debug(
-                    "Attempting to send %s logs to %s instance",
-                    len(data_stream),
-                    self.__url,
-                )
-
-                resp: httpx.Response = await self.__client.post(
-                    self.__url,
-                    data=orjson.dumps(data_stream),  # type: ignore
-                )
-                del data_stream
-
-                if resp.status_code != 200:
-                    log.error(
-                        "Failed to send logs to host with status code %s",
-                        resp.status_code,
+                    log.debug(
+                        "Attempting to send %s logs to %s instance",
+                        len(data_stream),
+                        self.__url,
                     )
-                    return
 
-                resp_body = resp.json()
-                if resp_body.get('code') == 200:
-                    for stream in resp_body.get("status", []):
-                        success = int(stream["successful"])
-                        failure = int(stream("failed"))
-                        log.debug(
-                            "Sent %s logs to stream %s. %s successful, %s failed",
-                            success + failure,
-                            stream["name"],
-                            success,
-                            failure,
+                    resp: httpx.Response = await self.__client.post(
+                        self.__url,
+                        data=orjson.dumps(data_stream),  # type: ignore
+                    )
+                    del data_stream
+
+                    if resp.status_code != 200:
+                        log.error(
+                            "Failed to send logs to host with status code %s and response %s",
+                            resp.status_code,
+                            resp.text,
                         )
+                        continue
 
-                else:
-                    log.error("Something went wrong uploading logs: %s", resp_body)
+                    resp_body = resp.json()
+                    if resp_body.get("code") == 200:
+                        for stream in resp_body.get("status", []):
+                            success = int(stream.get("successful", 0))
+                            failure = int(stream.get("failed", 0))
+                            log.debug(
+                                "Sent %s logs to stream %s. %s successful, %s failed",
+                                success + failure,
+                                stream.get("name"),
+                                success,
+                                failure,
+                            )
+
+                    else:
+                        log.error("Something went wrong uploading logs: %s", resp_body)
+
+        except Exception as e:
+            log.critical(
+                "Something went wrong in the dispatcher which caused it to crash.\n%s",
+                commons.exception_as_string(e),
+            )
