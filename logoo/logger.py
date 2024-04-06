@@ -52,9 +52,9 @@ class Logger:
             "message": message,
             "source": self.name,
             "_timestamp.timezone": "UTC",
-            # We do this to get microseconds included
-            # Open to a better way to do it please
-            "_timestamp": str(created_at.timestamp()).replace(".", ""),
+            # We do this twice as OpenObserve will convert
+            # _timestamp to microseconds within their UI
+            "_timestamp": created_at.isoformat(),
             "_timestamp.iso_format": created_at.isoformat(),
         }
         if self.extra_metadata is not None:

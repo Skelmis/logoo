@@ -141,11 +141,12 @@ class PrimaryLogger(Logger):
                             success = int(stream.get("successful", 0))
                             failure = int(stream.get("failed", 0))
                             log.debug(
-                                "Sent %s logs to stream %s. %s successful, %s failed",
+                                "Sent %s logs to stream %s. %s successful, %s failed%s",
                                 success + failure,
                                 stream.get("name"),
                                 success,
                                 failure,
+                                f'\n\tError: {stream.get("error")}' if stream.get("error") is not None else ""
                             )
 
                     else:
