@@ -124,7 +124,7 @@ class PrimaryLogger(Logger):
 
                         resp: httpx.Response = await self.__client.post(
                             self.__url,
-                            data=orjson.dumps(data_stream),  # type: ignore
+                            content=orjson.dumps(data_stream),  # type: ignore
                         )
                         del data_stream
 
